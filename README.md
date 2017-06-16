@@ -16,6 +16,7 @@ Local Government Areas (Councils)
 * General finance queries:
 hotel v club?
 Profit per machine?
+*Do the grants go back to communities which spend on pokies?
 
 ### Write article for Medium
 
