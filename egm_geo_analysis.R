@@ -2,7 +2,7 @@ library(dplyr)
 library(readr)
 library(tidyr)
 library(rgdal)
-library(rgeos)
+library(GISTools)
 library(ggplot2)
 
 #Estimated Population by LGA and Year
@@ -34,6 +34,14 @@ qld_lga_sp <- readOGR(
   layer = "Local_Government_Areas")
 
 qld_lga_clip <- gIntersection(qld_lga_sp, qld_boundary_sp, byid = TRUE)
+qld_lga_clip_df <- fortify(qld_lga_clip)
+
+qld_lgac_map <- ggplot(qld_lga_clip_df,aes(long,lat,group=group)) + 
+  geom_polygon(fill="white",colour="black") +
+  coord_equal()
+# print is waaayyyy too slow on Mac
+#print(qld_lgac_map)
+ggsave("qld_lgac_map.pdf", plot = qld_lgac_map)
 
 qld_lga_df <- fortify(qld_lga_sp,region = "ABBREV_NAM")
 
