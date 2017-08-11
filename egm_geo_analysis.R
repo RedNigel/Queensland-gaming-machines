@@ -1,13 +1,9 @@
-library(plyr)
-library(readr)
-library(tidyr)
 library(rgdal)
 library(GISTools)
 library(ggplot2)
-library(xlsx)
-library(dplyr)
 
-# Estimated Population by LGA and Year
+# Estimated Population Data -----------------------------------------------
+
 url_lga_est_pop <- "http://www.abs.gov.au/AUSSTATS/subscriber.nsf/log?openagent&32180ds0002_2006-16.xls&3218.0&Data%20Cubes&52F52135AF8E88A5CA25816A00175E8D&0&2016&28.07.2017&Latest"
 fn_lga_est_pop <- "32180ds0002_2006-16.xls"
 download.file(url_lga_est_pop, fn_lga_est_pop)
@@ -27,6 +23,9 @@ unique(e$LGA.Region[!(e$LGA.Region %in% lga_est_pop_ds$LGA)])
 lga_est_pop_dst <- lga_est_pop_ds %>% select(LGACode:`2016pr`)
 lga_est_pop_dsn <- gather(lga_est_pop_dst,year,pop,`2006`:`2016pr`)
 
+
+# Spatial Data ------------------------------------------------------------
+
 url_LGA_Boundaries <- "http://qldspatial.information.qld.gov.au/catalogue/custom/search.page?q=%22Local%20government%20area%20boundaries%20-%20Queensland%22#"
 
 qld_boundary_sp <- readOGR(
@@ -41,6 +40,9 @@ qld_lga_sp <- readOGR(
 
 qld_lga_clip <- gIntersection(qld_lga_sp, qld_boundary_sp, byid = TRUE)
 qld_lga_clip_df <- fortify(qld_lga_clip)
+
+
+# Plotting ----------------------------------------------------------------
 
 qld_lgac_map <- ggplot(qld_lga_clip_df,aes(long,lat,group=group)) + 
   geom_polygon(fill="white",colour="black") +
