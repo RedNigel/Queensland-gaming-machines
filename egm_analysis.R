@@ -49,7 +49,7 @@ total_club_egm_df = total_club_egm_df %>% mutate(segment = "club")
 # create conbined egm data from individial segment subsets
 combined_egm_segment = full_join(total_hotel_egm_df, 
     total_club_egm_df, all = T) %>% 
-    mutate(date_stamp = dmy(paste(1, month_year))) %>% 
+    mutate(date_stamp = dmy(paste(1, x_month_year))) %>% 
     arrange(date_stamp)
 
 # plot combined data segments
@@ -74,13 +74,13 @@ combined_egm_segment %>% select(date_stamp, metered_win, segment) %>%
 # 1. summarize by month year and remove extra columns
 # dplyr::funs is my new friend!
 # h/t @ https://stackoverflow.com/a/24455439
-check_total_egm_df = combined_egm_segment %>% group_by(month_year) %>% 
+check_total_egm_df = combined_egm_segment %>% group_by(x_month_year) %>% 
     mutate(segment = NULL, date_stamp = NULL) %>%
     summarise_each(funs(sum))
 
 # 2. sort both data frames by month year column
-check_total_egm_df = check_total_egm_df %>% arrange(month_year)
-total_egm_df = total_egm_df %>% arrange(month_year)
+check_total_egm_df = check_total_egm_df %>% arrange(x_month_year)
+total_egm_df = total_egm_df %>% arrange(x_month_year)
 
 # 3. check that the data frames are equal
 # doesn't return true because of the attribues... but content looks same

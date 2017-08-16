@@ -1,0 +1,67 @@
+---
+title: "Queensland Gaming Exploratory Data Analysis"
+author: "Ashley Betts"
+date: "11/08/2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+As the EGM data set related to LGA's has no expenditure we're going to have a dig to see if we can find some way to infer it from the other data sets that do contain expenditure. We're after the expenditure so that we can tie it back to demographic type data captured at the LGA by the ABS.
+
+## Data Setup
+From the EGM related datasets `all_gambling_df` contains the expenditure and `total_egm_sum` contains the metered wins. We'll summarise and join these to help get a picture of the ratio between expenditure vs wins (payout percentage).
+```{r, message=F}
+library(knitr)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+source("egm_analysis.R")
+all_gamb_sum <- all_gambling_df %>%
+  dplyr::select(-game_stream) %>% 
+  group_by(x_month_year) %>%
+  dplyr::summarise(total_expenditure=sum(player_expenditure))
+total_egm_sum <- total_egm_df %>%
+  dplyr::select(x_month_year,metered_win) %>%
+  group_by(x_month_year) %>%
+  dplyr::summarise(total_wins=sum(metered_win))
+egm_flow <- full_join(all_gamb_sum,total_egm_sum)
+egm_flow <- separate(egm_flow, x_month_year, c("Month", "Year"))
+```
+Next we determine the payout percentage.
+```{r}
+egm_flow_sum <- egm_flow %>% group_by(Year) %>% dplyr::summarise(expend=sum(total_expenditure, na.rm = T),pay=sum(total_wins, na.rm=T),paypct=pay/expend)
+```
+We'll use `t.test` to determine how confident we are that the mean of the payout percentage can be applied to wins to infer the expenditure.
+```{r}
+tresult <- t.test(mean(egm_flow_sum$paypct)-egm_flow_sum$paypct)
+```
+We're `r attr(tresult$conf.int,"conf.level")` confident that the mean is within `r tresult$conf.int[1]` and `r tresult$conf.int[2]` of the overall mean.  
+Lets take a look at the data to see if there is anything unusual.
+```{r}
+ggplot(egm_flow_sum, aes(x=Year)) + geom_line(aes(y=expend,col="Expenditure", group=1)) + geom_line(aes(y=pay, col="Winnings", group=1)) + scale_color_manual("",breaks=c("Expenditure", "Winnings"), values=c("red","blue"))
+```
+Looks like there's something unusual in 2013 happening and possibly 2017 as it drops off. We'll have a closer look.
+```{r}
+kable(filter(egm_flow, Year == "2013" | Year == "2017"))
+```
+
+Yep, missing data in November of 2013 and April 2017. Let's remove it so we can see more realistic confidence intervals.
+```{r}
+egm_flow_m <- filter(egm_flow, !(Month == "November" & Year == "2013"), !(Month == "April" & Year == "2017"))
+egm_flow_sum_m <- egm_flow_m %>% group_by(Year) %>% dplyr::summarise(expend=sum(total_expenditure, na.rm = T),pay=sum(total_wins, na.rm=T),paypct=pay/expend)
+tresult <- t.test(mean(egm_flow_sum_m$paypct)-egm_flow_sum_m$paypct)
+```
+We're `r attr(tresult$conf.int,"conf.level")` confident that the mean is within `r tresult$conf.int[1]` and `r tresult$conf.int[2]` of the overall mean.  
+That's pretty tight. Less than 1% so we'll run with a payout percentage of:
+```{r}
+paypctm <- mean(egm_flow_sum_m$paypct)
+```
+`r paypctm`
+
+> Note this was generated off of the dataset with the observations that have missing data removed so they didn't skew the mean.
+
