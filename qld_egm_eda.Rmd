@@ -65,3 +65,66 @@ paypctm <- mean(egm_flow_sum_m$paypct)
 
 > Note this was generated off of the dataset with the observations that have missing data removed so they didn't skew the mean.
 
+Now we're going to join with some ABS data by LGA region to see if we can pull out any insights.
+
+```{r, message=F}
+source("abs_data_by_region.R")
+create_abs_dbr_dss(lga_data)
+```
+We'll tidy up some column names and then bust up the `Month Year` column for joining.
+```{r}
+names(lg_egm_df) <- c("MonthYear","LGA.Region","Approved.Sites","Operational.Sites","Approved.EGMs", "Operational.EGMs", "Metered.Win")
+lga_egm_df <- separate(lg_egm_df, MonthYear, c("Month", "YEAR"))
+```
+As all of the ABS data is yearly, not monthly average/sum the figures for a year on the EGM LGA dataset.
+```{r}
+lga_egm_yearly_df <- lga_egm_df %>%
+  group_by(LGA.Region,YEAR) %>% 
+  dplyr::summarise(avg_app_sites = mean(Approved.Sites), avg_op_sites = mean(Operational.Sites), avg_app_egms = mean(Approved.EGMs), avg_op_egms = mean(Operational.EGMs), tot_metered_win = sum(Metered.Win), tot_inf_expend = tot_metered_win / paypctm)
+```
+Now we'll grab the mapping between the EGM LGA names and the ABS LGA Codes so we can do some joining.
+```{r}
+lga_mapping <- create_qld_lga_mapping(lga_pop_ds)
+lga_egm_yearly_df <- inner_join(lga_egm_yearly_df,lga_mapping, by=c("LGA.Region"="LABEL"))
+```
+We can now join on `CODE`. 
+
+We'll check the ABS data for min and max years.
+```{r}
+absminyr <- min(lga_pop_ds$YEAR)
+absmaxyr <- max(lga_pop_ds$YEAR)
+```
+The ABS data contains data between `r absminyr` and `r absmaxyr`. We need to trim up the EGM data to match.
+```{r}
+lga_egm_11_15_df <- filter(lga_egm_yearly_df, YEAR >= absminyr, YEAR <= absmaxyr)
+```
+Next we'll get the population of people who are legally allowed to gamble. Unfortantely the ABS age related data has a range between 15-19 years which includes the 18-19 year olds that can legally gamble. We will include this range to be conservative.
+
+```{r}
+lga_gambling_pop_ds <- lga_pop_ds %>%
+  mutate(gambling_pop=rowSums(.[54:68])) %>% 
+  dplyr::select(CODE,LABEL,YEAR,gambling_pop)
+```
+We'll now join the population data to the EGM data.
+```{r}
+lga_egm_11_15_pop_df <- inner_join(lga_egm_11_15_df,lga_gambling_pop_ds)
+```
+Now lets see how much each eligible gamble person is spending.
+```{r}
+lga_egm_11_15_pop_df <- mutate(lga_egm_11_15_pop_df, inf_exp_g_person = tot_inf_expend / gambling_pop)
+lga_egm_11_15_pop_df %>% dplyr::select(LGA.Region,CODE,YEAR,tot_metered_win,tot_inf_expend,inf_exp_g_person)
+```
+We can now see the average amount each (remember this is conservative) person who is elible is spending per year.  
+Let see which LGA has spent the most on gambling.
+```{r}
+max_exp_lga <- lga_egm_11_15_pop_df[which.max(lga_egm_11_15_pop_df$inf_exp_g_person),]
+```
+The LGA that expended the most was `r max_exp_lga$LGA.Region` at `r max_exp_lga$inf_exp_g_person` dollars.
+```{r}
+kable(ungroup(lga_egm_11_15_pop_df) %>% top_n(50, inf_exp_g_person) %>% dplyr::select(LGA.Region, YEAR, inf_exp_g_person) %>% arrange(desc(inf_exp_g_person)))
+```
+
+
+
+
+
