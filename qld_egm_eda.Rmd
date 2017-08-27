@@ -127,8 +127,40 @@ Now lets check the average expenditure for all LGA's.
 ```{r}
 avg_lga_exp <- mean(lga_egm_11_15_pop_df$inf_exp_g_person, na.rm = T)
 ```
+
 The average expenditure was `r avg_lga_exp`.
 
+```{r}
+lga_data_avl <- lga_egm_11_15_pop_df %>% 
+  group_by(LGA.Region) %>% 
+  dplyr::summarise(all_na = sum(is.na(inf_exp_g_person)) == n())
+
+lga_with_data <- filter(lga_data_avl, all_na == F)$LGA.Region
+lga_egm_11_15_pop_wd_df <- filter(lga_egm_11_15_pop_df, LGA.Region %in% lga_with_data)
+
+dist_tests <- distinct(lga_egm_11_15_pop_wd_df,LGA.Region)
+
+test_against_remaining <- function(x) {
+  t1 <- filter(lga_egm_11_15_pop_wd_df,LGA.Region==x[1])$inf_exp_g_person
+  t2 <- filter(lga_egm_11_15_pop_wd_df,LGA.Region!=x[1])$inf_exp_g_person
+  results <- t.test(t1, t2, paired = F, var.equal = F)
+  #results
+  list(LGA=x[[1]],p.value=results$p.value,result=results)
+}
+
+t <- apply(dist_tests,1,test_against_remaining)
+t <- t[order(sapply(t, function(x) x$p.value))]
+
+pvals <- sapply(t, function(x) x$p.value)
+t_lga <- sapply(t, function(x) x$LGA)
+adj_pvals <- p.adjust(pvals)
+
+sig_adj_pvals <- adj_pvals <= 0.05
+# Don't forget to adjust p.values.
+
+```
 
 
+3664 7770
+pin: 575 042 123
 
