@@ -130,6 +130,7 @@ avg_lga_exp <- mean(lga_egm_11_15_pop_df$inf_exp_g_person, na.rm = T)
 
 The average expenditure was `r avg_lga_exp`.
 
+It has been noted that we're missing some data for certain LGA's. We will remove all LGA's from the analysis that don't have any data to test.
 ```{r}
 lga_data_avl <- lga_egm_11_15_pop_df %>% 
   group_by(LGA.Region) %>% 
@@ -137,7 +138,18 @@ lga_data_avl <- lga_egm_11_15_pop_df %>%
 
 lga_with_data <- filter(lga_data_avl, all_na == F)$LGA.Region
 lga_egm_11_15_pop_wd_df <- filter(lga_egm_11_15_pop_df, LGA.Region %in% lga_with_data)
+lga_without_data <- filter(lga_data_avl, all_na == T)$LGA.Region
+```
 
+These LGA's have been excluded from the analysis as the have no supporting data.
+
+```{r}
+kable(lga_without_data)
+```
+
+Now we will compare the expenditure of each LGA with all remaining LGA's to see if they spend significantly more or less than the remaining mass.
+
+```{r}
 dist_tests <- distinct(lga_egm_11_15_pop_wd_df,LGA.Region)
 
 test_against_remaining <- function(x) {
@@ -153,10 +165,24 @@ t <- t[order(sapply(t, function(x) x$p.value))]
 
 pvals <- sapply(t, function(x) x$p.value)
 t_lga <- sapply(t, function(x) x$LGA)
+mean_x <- sapply(t, function(x) x$result$estimate[1])
+mean_y <- sapply(t, function(x) x$result$estimate[2])
+confint_lower <- sapply(t, function(x) x$result$conf.int[1])
+confint_upper <- sapply(t, function(x) x$result$conf.int[2])
+
+# Adjust the p.vals as we're using the samples multiple times.
 adj_pvals <- p.adjust(pvals)
 
 sig_adj_pvals <- adj_pvals <= 0.05
-# Don't forget to adjust p.values.
+
+lga_stats <- data.frame(LGA=t_lga, PVal=pvals, APVal=adj_pvals, Signif=sig_adj_pvals, XMean=mean_x, YMean=mean_y, ConfL=confint_lower, ConfU = confint_upper )
+
+lga_stats_lvl <- lga_stats %>%
+  mutate(ExpLevel = if_else(Signif == T & XMean > YMean, "ABOVE",
+                            if_else(Signif == T & XMean < YMean, "BELOW", "AVG"))) %>% 
+  arrange(ExpLevel,APVal)
+
+kable(lga_stats_lvl)
 
 ```
 
