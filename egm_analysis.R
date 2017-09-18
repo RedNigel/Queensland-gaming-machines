@@ -1,6 +1,9 @@
 library(dplyr)
+library(tidyr)
 library(readr)
 library(lubridate)
+library(scales)
+library(ggplot2)
 
 ## 1. Data sources
 
@@ -47,9 +50,13 @@ total_hotel_egm_df = total_hotel_egm_df %>% mutate(segment = "hotel")
 total_club_egm_df = total_club_egm_df %>% mutate(segment = "club")
 
 # create conbined egm data from individial segment subsets
+# Date stamp uses last day of month as per data definition.
 combined_egm_segment = full_join(total_hotel_egm_df, 
-    total_club_egm_df, all = T) %>% 
-    mutate(date_stamp = dmy(paste(1, x_month_year))) %>% 
+    total_club_egm_df, all = T) %>%
+    separate(col = month_year, into = c("month","year"), sep = " ") %>%
+    mutate(month_idx = match(month, month.name),                  
+           day = days_in_month(month_idx)) %>%
+    mutate(date_stamp = dmy(paste(day, month, year))) %>% 
     arrange(date_stamp)
 
 # plot combined data segments
@@ -65,6 +72,44 @@ combined_egm_segment %>% select(date_stamp, metered_win, segment) %>%
     ggplot() + 
     aes(x = date_stamp, y = metered_win, fill=segment) + 
     geom_bar(stat = "identity")
+
+# c) Two line plots for club vs hotel
+combined_egm_segment %>%
+  ggplot(aes(x = date_stamp, y = metered_win, colour = segment)) +
+  geom_path() +
+  scale_x_date(date_breaks = "1 years") + 
+  scale_y_continuous(breaks = seq(5000000, 150000000, 10000000),
+                     labels = dollar)
+# d) Win per machine by club vs hotel.
+combined_egm_segment %>%
+  mutate(win_per_machine = metered_win/operational_egms) %>%
+    ggplot(aes(x = date_stamp, y = win_per_machine, colour = segment)) +
+  geom_path() +
+  scale_x_date(date_breaks = "1 years") + 
+  scale_y_continuous(labels = dollar)
+
+# Interesting that takings per machine per month seems to be steadily increasing.
+# Clubs dip a little recently. Night-time precint lockout laws in effect?
+# Will be very interesting to look at this on a geographic basis.
+
+# e) Are clubs and hotels diverging?
+# This is plot c with a 3rd line representing hotel - club
+# plotted beneath with a trend line. It looks like maybe there
+# is some evidence of hotel takings growing faster than clubs
+
+combined_egm_segment %>%
+  group_by(month, year) %>%
+  mutate(max_ = max(metered_win), min_ = min(metered_win),
+         hotel_club_diff = max(metered_win) - min(metered_win)) %>%
+  ggplot() +
+  geom_path(aes(x = date_stamp, y = metered_win, colour = segment)) +
+  geom_path(aes(x = date_stamp, y = hotel_club_diff)) +
+  scale_x_date(date_breaks = "1 years") + 
+  scale_y_continuous(breaks = seq(5000000, 150000000, 10000000),
+                       labels = dollar) +
+  stat_smooth(aes(x = date_stamp, y = hotel_club_diff))
+
+# TODO add legend for difference. 
 
 ## NOTE:.... the following section below is purely optional for interest
 ## Aim: Check that the combined_egm_df data matches the contents of the
