@@ -53,7 +53,7 @@ total_club_egm_df = total_club_egm_df %>% mutate(segment = "club")
 # Date stamp uses last day of month as per data definition.
 combined_egm_segment = full_join(total_hotel_egm_df, 
     total_club_egm_df, all = T) %>%
-    separate(col = month_year, into = c("month","year"), sep = " ") %>%
+    separate(col = x_month_year, into = c("month","year"), sep = " ") %>%
     mutate(month_idx = match(month, month.name),                  
            day = days_in_month(month_idx)) %>%
     mutate(date_stamp = dmy(paste(day, month, year))) %>% 
@@ -119,12 +119,12 @@ combined_egm_segment %>%
 # 1. summarize by month year and remove extra columns
 # dplyr::funs is my new friend!
 # h/t @ https://stackoverflow.com/a/24455439
-check_total_egm_df = combined_egm_segment %>% group_by(x_month_year) %>% 
+check_total_egm_df = combined_egm_segment %>% group_by(year, month) %>% 
     mutate(segment = NULL, date_stamp = NULL) %>%
     summarise_each(funs(sum))
 
 # 2. sort both data frames by month year column
-check_total_egm_df = check_total_egm_df %>% arrange(x_month_year)
+check_total_egm_df = check_total_egm_df %>% arrange(year, month)
 total_egm_df = total_egm_df %>% arrange(x_month_year)
 
 # 3. check that the data frames are equal
