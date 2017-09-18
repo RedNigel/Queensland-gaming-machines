@@ -17,9 +17,13 @@ As the EGM data set related to LGA's has no expenditure we're going to have a di
 From the EGM related datasets `all_gambling_df` contains the expenditure and `total_egm_sum` contains the metered wins. We'll summarise and join these to help get a picture of the ratio between expenditure vs wins (payout percentage).
 ```{r, message=F}
 library(knitr)
+library(ggplot2)
+library(broom)
+library(rgdal)
+library(GISTools)
+library(raster)
 library(tidyr)
 library(dplyr)
-library(ggplot2)
 source("egm_analysis.R")
 all_gamb_sum <- all_gambling_df %>%
   dplyr::select(-game_stream) %>% 
@@ -149,7 +153,7 @@ kable(lga_without_data)
 
 Now we will compare the expenditure of each LGA with all remaining LGA's to see if they spend significantly more or less than the remaining mass.
 
-```{r}
+```{r statsanalysis}
 dist_tests <- distinct(lga_egm_11_15_pop_wd_df,LGA.Region)
 
 test_against_remaining <- function(x) {
@@ -186,4 +190,47 @@ kable(lga_stats_lvl)
 
 ```
 
+Now looks take a look where all these gamblers are.
+
+```{r geoanalysis}
+# Spatial Data ------------------------------------------------------------
+
+qld_boundary_sp <- readOGR(
+  dsn = "data/State Boundaries MAY 2016/Standard/QLD_STATE_POLYGON_shp.shp",
+  layer = "QLD_STATE_POLYGON_shp")
+
+qld_boundary_simp <- gSimplify(qld_boundary_sp, 0.02, topologyPreserve = T)
+
+qld_lga_sp <- readOGR(
+  dsn = "data/QSC_Extracted_Data_20170809_220025273000-14836/Local_Government_Areas.shp",
+  layer = "Local_Government_Areas")
+
+qld_lga_simp <- gSimplify(qld_lga_sp, 0.02, topologyPreserve = T)
+qld_lga_simp_data <- SpatialPolygonsDataFrame(qld_lga_simp, data=qld_lga_sp@data)
+
+qld_lga_clip <- intersect(qld_lga_simp_data, qld_boundary_simp)
+qld_lga_clip_tidy <- tidy(qld_lga_clip, region = "LGA_CODE")
+tmp_lga_chars <- nchar(qld_lga_clip_tidy$id)
+
+qld_lga_clip_df <- qld_lga_clip_tidy %>%
+  mutate(LGA_CODE=if_else(tmp_lga_chars > 3, paste0("3",id), paste0("30", id)))
+
+lga_stats_lvl_coded <- left_join(lga_stats_lvl, lga_mapping, by=c("LGA"="LABEL"))
+
+#Now trim it down a bit before joining to spatial data.
+lga_stats_mean_diff <- dplyr::select(lga_stats_lvl_coded, CODE, XMean, YMean) %>% mutate(mean_diff = XMean - YMean) %>% dplyr::select(CODE, mean_diff)
+
+qld_lga_geom_stat_lvl_df <- left_join(qld_lga_clip_df, lga_stats_mean_diff, by=c("LGA_CODE"="CODE"))
+
+# Plotting ----------------------------------------------------------------
+
+qld_lgac_map <- ggplot(qld_lga_geom_stat_lvl_df,aes(long,lat,group=group)) + 
+  geom_polygon(aes(fill=mean_diff)) +
+  scale_fill_distiller(palette = "GnBu", direction = -1) +
+  coord_equal()
+# print is waaayyyy too slow on Mac
+print(qld_lgac_map)
+#ggsave("qld_lgac_map.pdf", plot = qld_lgac_map)
+
+```
 
