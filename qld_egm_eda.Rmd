@@ -44,7 +44,7 @@ We'll use `t.test` to determine how confident we are that the mean of the payout
 ```{r}
 tresult <- t.test(mean(egm_flow_sum$paypct)-egm_flow_sum$paypct)
 ```
-We're `r attr(tresult$conf.int,"conf.level")` confident that the mean is within `r tresult$conf.int[1]` and `r tresult$conf.int[2]` of the overall mean.  
+We're `r attr(tresult$conf.int,"conf.level")` confident that the mean is within `r tresult$conf.int[1]` and `r tresult$conf.int[2]` of the overall mean (interval contains zero).  
 Lets take a look at the data to see if there is anything unusual.
 ```{r}
 ggplot(egm_flow_sum, aes(x=Year)) + geom_line(aes(y=expend,col="Expenditure", group=1)) + geom_line(aes(y=pay, col="Winnings", group=1)) + scale_color_manual("",breaks=c("Expenditure", "Winnings"), values=c("red","blue"))
@@ -190,7 +190,7 @@ kable(lga_stats_lvl)
 
 ```
 
-Now looks take a look where all these gamblers are.
+Now looks take a look where all these gamblers are. The grey LGA's have no data.
 
 ```{r geoanalysis}
 # Spatial Data ------------------------------------------------------------
@@ -227,6 +227,7 @@ qld_lga_geom_stat_lvl_df <- left_join(qld_lga_clip_df, lga_stats_mean_diff, by=c
 qld_lgac_map <- ggplot(qld_lga_geom_stat_lvl_df,aes(long,lat,group=group)) + 
   geom_polygon(aes(fill=mean_diff)) +
   scale_fill_distiller(palette = "GnBu", direction = -1) +
+#   scale_fill_distiller(palette = "Greys", direction = -1) +
   coord_equal()
 # print is waaayyyy too slow on Mac
 print(qld_lgac_map)
