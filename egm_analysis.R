@@ -4,6 +4,9 @@ library(readr)
 library(lubridate)
 library(scales)
 library(ggplot2)
+library(gganimate)
+library(tweener)
+library(forcats)
 
 ## 1. Data sources
 
@@ -132,3 +135,27 @@ total_egm_df = total_egm_df %>% arrange(month_year)
 # happily, doesn't return row missmatch list
 # had to coerce to data.frame to use this base function. all_equal() failed.
 all.equal(as.data.frame(check_total_egm_df), as.data.frame(total_egm_df))
+
+# 4. Nigel's animated plot
+# Lofi version:
+# Need gganimate
+line_plot <- total_egm_df %>%
+  separate(month_year, 
+           into = c("month", "year"),
+           sep = "\\s") %>%
+  mutate(month_idx = match(month, month.name),
+         taking_per_machine = metered_win/operational_egms) %>%
+  filter(!(year %in% c("2004","2017"))) %>%
+  ggplot(aes(x = fct_reorder(month, month_idx) , y = taking_per_machine, group = year)) +
+    geom_line(aes(frame = year)) +
+    scale_y_continuous(labels = dollar) +
+    scale_x_discrete(labels = month.abb) +
+    ylab("Monthly Takings Per Poker Machine") +
+    xlab("Month of the Year")
+  
+gganimate(line_plot)
+
+# To have transition animations we're going to need to use
+# tweenr: https://github.com/thomasp85/tweenr
+# Should be fun!
+
