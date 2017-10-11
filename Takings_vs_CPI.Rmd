@@ -1,0 +1,137 @@
+---
+title: "Poker Machine Takings vs Inflation"
+author: "Miles McBain"
+date: "October 7, 2017"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+```
+
+
+# Data sources
+```{r}
+# Summary data of total EGM in Qld
+url_QLD_TotalGamingMachineData <- 'http://data.justice.qld.gov.au/JSD/OLGR/20170518_OLGR_Total-Queensland-EGM-data.csv'
+
+# Australian inflation (CPI)
+url_AU_CPI <- "http://ausmacrodata.org/Data/6401.0/eegrsrsiaisxseslr.csv"
+
+
+
+# Australian wage growth data
+# http://www.abs.gov.au/AUSSTATS/abs@.nsf/DetailsPage/6345.0Jun%202017
+
+AUS_WPI <- tibble::tribble(
+  ~Month_Year, ~YOY_change,
+   "Dec-2006",     4,
+   "Mar-2007",     4,
+   "Jun-2007",     4,
+   "Sep-2007",   4.3,
+   "Dec-2007",   4.2,
+   "Mar-2008",   4.1,
+   "Jun-2008",   4.3,
+   "Sep-2008",     4,
+   "Dec-2008",   4.3,
+   "Mar-2009",     4,
+   "Jun-2009",   3.7,
+   "Sep-2009",   3.4,
+   "Dec-2009",   2.9,
+   "Mar-2010",   3.1,
+   "Jun-2010",   3.1,
+   "Sep-2010",   3.6,
+   "Dec-2010",   3.8,
+   "Mar-2011",   3.9,
+   "Jun-2011",   3.8,
+   "Sep-2011",   3.6,
+   "Dec-2011",   3.7,
+   "Mar-2012",   3.5,
+   "Jun-2012",   3.7,
+   "Sep-2012",   3.7,
+   "Dec-2012",   3.4,
+   "Mar-2013",   3.2,
+   "Jun-2013",   2.9,
+   "Sep-2013",   2.7,
+   "Dec-2013",   2.5,
+   "Mar-2014",   2.6,
+   "Jun-2014",   2.6,
+   "Sep-2014",   2.5,
+   "Dec-2014",   2.6,
+   "Mar-2015",   2.3,
+   "Jun-2015",   2.3,
+   "Sep-2015",   2.3,
+   "Dec-2015",   2.1,
+   "Mar-2016",   2.1,
+   "Jun-2016",   2.1,
+   "Sep-2016",     2,
+   "Dec-2016",     2,
+   "Mar-2017",   1.9,
+   "Jun-2017",   1.9
+  ) %>%
+  separate(col = `Month_Year`, into = c("month","year"), sep = "-") %>%
+  mutate(month_idx = match(month, month.abb),                  
+         day = days_in_month(month_idx)) %>%
+  mutate(date_stamp = dmy(paste(day, month, year)))
+  
+
+
+total_gaming_machine_data <-
+  read_csv(url(url_QLD_TotalGamingMachineData)) %>%
+  separate(col = `Month Year`, into = c("month","year"), sep = " ") %>%
+  mutate(month_idx = match(month, month.name),                  
+         day = days_in_month(month_idx)) %>%
+  mutate(date_stamp = dmy(paste(day, month, year))) %>% 
+  arrange(date_stamp)
+
+AU_CPI <- read_csv(url(url_AU_CPI)) %>%
+  select(date, value) %>%
+  separate(col = date, into = c("month", "year"), sep = "/") %>%
+  mutate(day = days_in_month(parse_number(month)),
+         date_stamp = dmy(paste0(day, month, year))) %>%
+  arrange(date_stamp)
+  
+```
+
+# Growth of Poker machine takings per machine (year on year)
+Year on year growth compared to WPI and CPI over the past decade.
+
+```{r}
+yearly_win_per_machine_summary <- 
+  total_gaming_machine_data %>%
+  mutate(win_per_machine = `Metered Win $`/`Operational EGMs`) %>%
+  group_by(year) %>%
+  summarise(yearly_win_per_machine = sum(win_per_machine)) %>%
+  filter(year != 2017) %>%
+  mutate(yoy_increase_win_per_machine =
+           (yearly_win_per_machine/lag(yearly_win_per_machine)))
+
+# CPI data is increase from previous quarter last year  
+yearly_CPI_summary <- 
+  AU_CPI %>%
+  filter(month == 12)
+
+# WPI data
+yearly_WPI_summary <-
+  AUS_WPI %>%
+  filter(month_idx == 12)
+  
+
+library(purrr)
+
+yearly_win_per_machine_summary %>%
+  left_join(yearly_CPI_summary) %>%
+  left_join(yearly_WPI_summary, by = "year") %>%
+  filter(year >= 2006) %>%
+  summarise(
+    increase_in_CPI = reduce(.x = (value+100)/100,
+                             .f = `*`),
+    increase_in_takings = reduce(.x = yoy_increase_win_per_machine,
+                             .f = `*`),
+    increase_in_wages = reduce(.x = (YOY_change+100)/100,
+                             .f = `*`)
+            ) %>%
+  knitr::kable()
+
+```
+
