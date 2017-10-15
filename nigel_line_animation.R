@@ -1,3 +1,32 @@
+
+# 4. Nigel's animated plot
+# Lofi version:
+# Need gganimate
+total_egm_clean <-
+ total_egm_df %>%
+  separate(month_year,
+           into = c("month", "year"),
+           sep = "\\s",
+           convert = FALSE) %>%
+  mutate(month_idx = match(month, month.name),
+         taking_per_machine = metered_win/operational_egms) %>%
+  filter(!(year %in% c("2004","2017")))
+
+line_plot <-
+    ggplot(total_egm_clean, aes(x = fct_reorder(month, month_idx) , y = taking_per_machine, group = year)) +
+    geom_line(aes(frame = year)) +
+    scale_y_continuous(labels = dollar) +
+    scale_x_discrete(labels = month.abb) +
+    ylab("Monthly Takings Per Poker Machine") +
+    xlab("Month of the Year")
+
+gganimate(line_plot)
+
+# To have transition animations we're going to need to use
+# tweenr: https://github.com/thomasp85/tweenr
+# Should be fun!
+# test tweenr
+
 egm_animation <-
   total_egm_clean %>%
   select(month, year, taking_per_machine) %>%
