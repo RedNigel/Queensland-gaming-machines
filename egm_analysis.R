@@ -27,11 +27,11 @@ url_LGAEGMdata = 'http://data.justice.qld.gov.au/JSD/OLGR/20170518_OLGR_LGA-EGM-
 # them "legal" and more convenient to use later on.
 tidy_df_names <- function(df){
     # regular expression for first gsub() call
-    # find spaces (if found) followed by any punctuation 
+    # find spaces (if found) followed by any punctuation
     # characters if the pattern occurs at the end of the line
     nameCleanRegex = "\\s?[[:punct:]]+$"
-    names(df) <- df %>% names %>% 
-        make.names %>% gsub(nameCleanRegex, "", .) %>% 
+    names(df) <- df %>% names %>%
+        make.names %>% gsub(nameCleanRegex, "", .) %>%
         gsub("\\.", "_", .) %>% tolower
     return(df)
 }
@@ -54,33 +54,33 @@ total_club_egm_df = total_club_egm_df %>% mutate(segment = "club")
 
 # create conbined egm data from individial segment subsets
 # Date stamp uses last day of month as per data definition.
-combined_egm_segment = full_join(total_hotel_egm_df, 
+combined_egm_segment = full_join(total_hotel_egm_df,
     total_club_egm_df, all = T) %>%
     separate(col = month_year, into = c("month","year"), sep = " ") %>%
-    mutate(month_idx = match(month, month.name),                  
+    mutate(month_idx = match(month, month.name),
            day = days_in_month(month_idx)) %>%
-    mutate(date_stamp = dmy(paste(day, month, year))) %>% 
+    mutate(date_stamp = dmy(paste(day, month, year))) %>%
     arrange(date_stamp)
 
 # plot combined data segments
 
 # a) creates ggplot object containing all data
-combined_egm_segment %>% ggplot() + 
-    aes(x = date_stamp, y = metered_win, fill=segment) + 
+combined_egm_segment %>% ggplot() +
+    aes(x = date_stamp, y = metered_win, fill=segment) +
     geom_bar(stat = "identity")
 
-# b) better option: identical plot to a) but creates 
+# b) better option: identical plot to a) but creates
 # only the variables needed for plot construction!
-combined_egm_segment %>% select(date_stamp, metered_win, segment) %>% 
-    ggplot() + 
-    aes(x = date_stamp, y = metered_win, fill=segment) + 
+combined_egm_segment %>% select(date_stamp, metered_win, segment) %>%
+    ggplot() +
+    aes(x = date_stamp, y = metered_win, fill=segment) +
     geom_bar(stat = "identity")
 
 # c) Two line plots for club vs hotel
 combined_egm_segment %>%
   ggplot(aes(x = date_stamp, y = metered_win, colour = segment)) +
   geom_path() +
-  scale_x_date(date_breaks = "1 years") + 
+  scale_x_date(date_breaks = "1 years") +
   scale_y_continuous(breaks = seq(5000000, 150000000, 10000000),
                      labels = dollar)
 # d) Win per machine by club vs hotel.
@@ -88,7 +88,7 @@ combined_egm_segment %>%
   mutate(win_per_machine = metered_win/operational_egms) %>%
     ggplot(aes(x = date_stamp, y = win_per_machine, colour = segment)) +
   geom_path() +
-  scale_x_date(date_breaks = "1 years") + 
+  scale_x_date(date_breaks = "1 years") +
   scale_y_continuous(labels = dollar)
 
 # Interesting that takings per machine per month seems to be steadily increasing.
@@ -107,12 +107,12 @@ combined_egm_segment %>%
   ggplot() +
   geom_path(aes(x = date_stamp, y = metered_win, colour = segment)) +
   geom_path(aes(x = date_stamp, y = hotel_club_diff)) +
-  scale_x_date(date_breaks = "1 years") + 
+  scale_x_date(date_breaks = "1 years") +
   scale_y_continuous(breaks = seq(5000000, 150000000, 10000000),
                        labels = dollar) +
   stat_smooth(aes(x = date_stamp, y = hotel_club_diff))
 
-# TODO add legend for difference. 
+# TODO add legend for difference.
 
 ## NOTE:.... the following section below is purely optional for interest
 ## Aim: Check that the combined_egm_df data matches the contents of the
@@ -122,7 +122,7 @@ combined_egm_segment %>%
 # 1. summarize by month year and remove extra columns
 # dplyr::funs is my new friend!
 # h/t @ https://stackoverflow.com/a/24455439
-check_total_egm_df = combined_egm_segment %>% group_by(month_year) %>% 
+check_total_egm_df = combined_egm_segment %>% group_by(month_year) %>%
     mutate(segment = NULL, date_stamp = NULL) %>%
     summarise_each(funs(sum))
 
@@ -139,23 +139,27 @@ all.equal(as.data.frame(check_total_egm_df), as.data.frame(total_egm_df))
 # 4. Nigel's animated plot
 # Lofi version:
 # Need gganimate
-line_plot <- total_egm_df %>%
-  separate(month_year, 
+total_egm_clean <-
+ total_egm_df %>%
+  separate(month_year,
            into = c("month", "year"),
-           sep = "\\s") %>%
+           sep = "\\s",
+           convert = FALSE) %>%
   mutate(month_idx = match(month, month.name),
          taking_per_machine = metered_win/operational_egms) %>%
-  filter(!(year %in% c("2004","2017"))) %>%
-  ggplot(aes(x = fct_reorder(month, month_idx) , y = taking_per_machine, group = year)) +
+  filter(!(year %in% c("2004","2017")))
+
+line_plot <-
+    ggplot(total_egm_clean, aes(x = fct_reorder(month, month_idx) , y = taking_per_machine, group = year)) +
     geom_line(aes(frame = year)) +
     scale_y_continuous(labels = dollar) +
     scale_x_discrete(labels = month.abb) +
     ylab("Monthly Takings Per Poker Machine") +
     xlab("Month of the Year")
-  
+
 gganimate(line_plot)
 
 # To have transition animations we're going to need to use
 # tweenr: https://github.com/thomasp85/tweenr
 # Should be fun!
-
+# test tweenr
