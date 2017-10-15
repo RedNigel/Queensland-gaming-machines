@@ -56,7 +56,7 @@ total_club_egm_df = total_club_egm_df %>% mutate(segment = "club")
 # Date stamp uses last day of month as per data definition.
 combined_egm_segment = full_join(total_hotel_egm_df,
     total_club_egm_df, all = T) %>%
-    separate(col = month_year, into = c("month","year"), sep = " ") %>%
+    separate(col = x_month_year, into = c("month","year"), sep = " ") %>%
     mutate(month_idx = match(month, month.name),
            day = days_in_month(month_idx)) %>%
     mutate(date_stamp = dmy(paste(day, month, year))) %>%
@@ -122,13 +122,13 @@ combined_egm_segment %>%
 # 1. summarize by month year and remove extra columns
 # dplyr::funs is my new friend!
 # h/t @ https://stackoverflow.com/a/24455439
-check_total_egm_df = combined_egm_segment %>% group_by(month_year) %>%
+check_total_egm_df = combined_egm_segment %>% group_by(year, month) %>%
     mutate(segment = NULL, date_stamp = NULL) %>%
     summarise_each(funs(sum))
 
 # 2. sort both data frames by month year column
-check_total_egm_df = check_total_egm_df %>% arrange(month_year)
-total_egm_df = total_egm_df %>% arrange(month_year)
+check_total_egm_df = check_total_egm_df %>% arrange(year, month)
+total_egm_df = total_egm_df %>% arrange(x_month_year)
 
 # 3. check that the data frames are equal
 # doesn't return true because of the attribues... but content looks same
@@ -136,30 +136,3 @@ total_egm_df = total_egm_df %>% arrange(month_year)
 # had to coerce to data.frame to use this base function. all_equal() failed.
 all.equal(as.data.frame(check_total_egm_df), as.data.frame(total_egm_df))
 
-# 4. Nigel's animated plot
-# Lofi version:
-# Need gganimate
-total_egm_clean <-
- total_egm_df %>%
-  separate(month_year,
-           into = c("month", "year"),
-           sep = "\\s",
-           convert = FALSE) %>%
-  mutate(month_idx = match(month, month.name),
-         taking_per_machine = metered_win/operational_egms) %>%
-  filter(!(year %in% c("2004","2017")))
-
-line_plot <-
-    ggplot(total_egm_clean, aes(x = fct_reorder(month, month_idx) , y = taking_per_machine, group = year)) +
-    geom_line(aes(frame = year)) +
-    scale_y_continuous(labels = dollar) +
-    scale_x_discrete(labels = month.abb) +
-    ylab("Monthly Takings Per Poker Machine") +
-    xlab("Month of the Year")
-
-gganimate(line_plot)
-
-# To have transition animations we're going to need to use
-# tweenr: https://github.com/thomasp85/tweenr
-# Should be fun!
-# test tweenr

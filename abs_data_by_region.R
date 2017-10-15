@@ -70,17 +70,22 @@ gen_ds <- function(rw) {
   url_ref <- rw["url"]
   xlsname <- rw["xlsname"]
   sheet <- rw["sheet"]
-  startRow <- as.numeric(rw["startRow"])
+  startRow <- as.numeric(rw[["startRow"]])
   dsname <- rw["dsname"]
-  zipname <- "gen_ds_tmp.zip"
-  download.file(url_ref, zipname)
-  unzip(zipname)
-  unlink(zipname)
+  if (!file.exists(xlsname)) {
+    zipname <- "gen_ds_tmp.zip"
+    download.file(url_ref, zipname)
+    unzip(zipname)
+    unlink(zipname)
+  }
   
   raw_ds <- read.xlsx(xlsname, sheet=sheet, startRow=startRow, na.strings="-")
   names(raw_ds) <- gen_col_names(raw_ds)
   final_ds <- raw_ds %>% 
     filter(row_number() > 3, row_number() < n() - 2)
+  # We write it out to csv and read again to tidy up the column types.
+  write_csv(final_ds, "tmp.csv")
+  final_ds <- read_csv("tmp.csv", col_types = cols(YEAR="c",CODE="c"))
   assign(dsname, final_ds, envir = .GlobalEnv)
 }
 
