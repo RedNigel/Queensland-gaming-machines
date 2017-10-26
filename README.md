@@ -17,6 +17,7 @@ Local Government Areas (Councils)
 hotel v club?
 Profit per machine?
 * Do the grants go back to communities which spend on pokies?
+* Can we generate a map of pokie venues using Google APIs? `ggmap` package?
 
 ### Write article for Medium
 
