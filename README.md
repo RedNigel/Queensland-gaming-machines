@@ -10,7 +10,7 @@ This is an analysis of electronic gaming machines (pokies) in Queensland.
 * Find friends to help
 
 Questions to answer
-* Has there been a change in numbers of EGMs over and over geography?
+* Has there been a change in numbers of EGMs over tim (annual) and over geography (state)?
 * Has the distribution of EGMs changed?
 Local Government Areas (Councils)
 * General finance queries:
