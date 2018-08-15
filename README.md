@@ -10,14 +10,14 @@ This is an analysis of electronic gaming machines (pokies) in Queensland.
 * Find friends to help
 
 Questions to answer
-* Has there been a change in numbers of EGMs over tim (annual) and over geography (state)?
-* Has the distribution of EGMs changed?
+1. Has there been a change in numbers of EGMs over tim (annual) and over geography (state)?
+2. Has the distribution of EGMs changed?
 Local Government Areas (Councils)
-* General finance queries:
+3. General finance queries:
 hotel v club?
 Profit per machine?
-* Do the grants go back to communities which spend on pokies?
-* Can we generate a map of pokie venues using Google APIs? `ggmap` package?
+4. Do the grants go back to communities which spend on pokies?
+5. Can we generate a map of pokie venues using Google APIs? `ggmap` package?
 
 ### Write article for Medium
 
